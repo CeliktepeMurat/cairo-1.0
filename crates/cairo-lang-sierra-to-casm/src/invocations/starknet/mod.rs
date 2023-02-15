@@ -8,6 +8,7 @@ use self::storage::{
     build_storage_address_from_base_and_offset, build_storage_base_address_const,
     build_storage_base_address_from_felt,
 };
+use super::misc::build_identity;
 use super::{misc, CompiledInvocation, CompiledInvocationBuilder};
 use crate::invocations::InvocationError;
 
@@ -34,6 +35,7 @@ pub fn build(
         StarkNetConcreteLibfunc::ContractAddressTryFromFelt(_) => {
             build_contract_address_try_from_felt(builder)
         }
+        StarkNetConcreteLibfunc::ContractAddressToFelt(_) => build_identity(builder),
         StarkNetConcreteLibfunc::StorageRead(_) => build_storage_read(builder),
         StarkNetConcreteLibfunc::StorageWrite(_) => build_storage_write(builder),
         StarkNetConcreteLibfunc::StorageBaseAddressConst(libfunc) => {
@@ -48,5 +50,8 @@ pub fn build(
         }
         StarkNetConcreteLibfunc::EmitEvent(_) => build_emit_event(builder),
         StarkNetConcreteLibfunc::GetCallerAddress(_) => build_getter(builder, "GetCallerAddress"),
+        StarkNetConcreteLibfunc::GetContractAddress(_) => {
+            build_getter(builder, "GetContractAddress")
+        }
     }
 }

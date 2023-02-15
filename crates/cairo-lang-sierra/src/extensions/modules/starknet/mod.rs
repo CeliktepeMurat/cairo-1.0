@@ -16,8 +16,8 @@ use emit_event::EmitEventLibfunc;
 pub mod interoperability;
 use interoperability::{CallContractLibfunc, ContractAddressConstLibfunc, ContractAddressType};
 
-use self::getter::{GetCallerAddressTrait, GetterLibfunc};
-use self::interoperability::ContractAddressTryFromFeltLibfunc;
+use self::getter::{GetCallerAddressTrait, GetContractAddressTrait, GetterLibfunc};
+use self::interoperability::{ContractAddressToFeltLibfunc, ContractAddressTryFromFeltLibfunc};
 use self::storage::{
     StorageAddressFromBaseAndOffsetLibfunc, StorageAddressFromBaseLibfunc, StorageAddressType,
     StorageBaseAddressFromFeltLibfunc,
@@ -37,6 +37,7 @@ define_libfunc_hierarchy! {
          CallContract(CallContractLibfunc),
          ContractAddressConst(ContractAddressConstLibfunc),
          ContractAddressTryFromFelt(ContractAddressTryFromFeltLibfunc),
+         ContractAddressToFelt(ContractAddressToFeltLibfunc),
          StorageRead(StorageReadLibfunc),
          StorageWrite(StorageWriteLibfunc),
          StorageBaseAddressConst(StorageBaseAddressConstLibfunc),
@@ -45,5 +46,6 @@ define_libfunc_hierarchy! {
          StorageAddressFromBaseAndOffset(StorageAddressFromBaseAndOffsetLibfunc),
          EmitEvent(EmitEventLibfunc),
          GetCallerAddress(GetterLibfunc<GetCallerAddressTrait>),
+         GetContractAddress(GetterLibfunc<GetContractAddressTrait>),
     }, StarkNetConcreteLibfunc
 }

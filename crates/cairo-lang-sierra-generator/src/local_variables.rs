@@ -16,7 +16,8 @@ use crate::db::SierraGenGroup;
 use crate::replace_ids::{DebugReplacer, SierraIdReplacer};
 use crate::utils::{
     enum_init_libfunc_id, get_concrete_libfunc_id, get_libfunc_signature, match_enum_libfunc_id,
-    statement_outputs, struct_construct_libfunc_id, struct_deconstruct_libfunc_id,
+    snapshot_take_libfunc_id, statement_outputs, struct_construct_libfunc_id,
+    struct_deconstruct_libfunc_id,
 };
 
 /// Given the lowering of a function, returns the set of variables which should be stored as local
@@ -159,6 +160,20 @@ fn inner_find_local_variables(
                     &[statement_enum_construct.output],
                 );
             }
+            lowering::Statement::Snapshot(statement_snapshot) => {
+                let ty = ctx.db.get_concrete_type_id(
+                    ctx.lowered_function.variables[statement_snapshot.output].ty,
+                )?;
+
+                let concrete_function_id = snapshot_take_libfunc_id(ctx.db, ty);
+                let libfunc_signature = get_libfunc_signature(ctx.db, concrete_function_id.clone());
+                let vars = &libfunc_signature.branch_signatures[0].vars;
+                state.register_outputs(
+                    &[statement_snapshot.input],
+                    &[statement_snapshot.output],
+                    &vars[1..],
+                );
+            }
         }
     }
 
@@ -176,13 +191,17 @@ fn inner_find_local_variables(
             let vars = remapping.values().copied().collect_vec();
             state.use_variables(&vars, res);
 
-            for var_id in remapping.keys().cloned() {
-                state.set_variable_status(var_id, VariableStatus::TemporaryVariable);
-            }
-
-            if let Some(BlockInfo { known_ap_change: false }) = ctx.block_infos.get(target_block_id)
-            {
-                known_ap_change = false;
+            if let Some(block_info) = ctx.block_infos.get(target_block_id) {
+                if let BlockInfo { known_ap_change: false } = block_info {
+                    known_ap_change = false;
+                }
+                for var_id in remapping.keys().cloned() {
+                    state.set_variable_status(var_id, VariableStatus::TemporaryVariable);
+                }
+            } else {
+                for (dst_var_id, src_var_id) in remapping.iter() {
+                    state.set_variable_status(*dst_var_id, VariableStatus::Alias(*src_var_id));
+                }
             }
 
             if !inner_find_local_variables(ctx, *target_block_id, state, res)? {

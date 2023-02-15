@@ -20,7 +20,8 @@ use crate::lower::context::{LoweringContext, LoweringContextBuilder, VarRequest}
 use crate::{
     BlockId, FlatBlock, FlatBlockEnd, FlatLowered, Statement, StatementCall,
     StatementEnumConstruct, StatementLiteral, StatementMatchEnum, StatementMatchExtern,
-    StatementStructConstruct, StatementStructDestructure, VarRemapping, VariableId,
+    StatementSnapshot, StatementStructConstruct, StatementStructDestructure, VarRemapping,
+    VariableId,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -28,6 +29,7 @@ pub enum InlineConfiguration {
     // The user did not specify any inlining preferences.
     None,
     Always,
+    Never,
 }
 
 /// data about inlining.
@@ -55,10 +57,14 @@ pub fn priv_inline_data(
     let mut diagnostics = LoweringDiagnostics::new(function_id.module_file_id(db.upcast()));
     let config = parse_inline_attribute(db, &mut diagnostics, function_id)?;
 
-    // If the the function is marked as #[inline(always)], we need to report
-    // inlining problems.
-    let report_diagnostics = config == InlineConfiguration::Always;
-    let info = gather_inlining_info(db, &mut diagnostics, report_diagnostics, function_id)?;
+    let info = if config == InlineConfiguration::Never {
+        InlineInfo { is_inlineable: false, should_inline: false }
+    } else {
+        // If the the function is marked as #[inline(always)], we need to report
+        // inlining problems.
+        let report_diagnostics = config == InlineConfiguration::Always;
+        gather_inlining_info(db, &mut diagnostics, report_diagnostics, function_id)?
+    };
 
     Ok(Arc::new(PrivInlineData { diagnostics: diagnostics.build(), config, info }))
 }
@@ -152,6 +158,9 @@ fn parse_inline_attribute(
         match &attr.args[..] {
             [ast::Expr::Path(path)] if &path.node.get_text(db.upcast()) == "always" => {
                 config = InlineConfiguration::Always;
+            }
+            [ast::Expr::Path(path)] if &path.node.get_text(db.upcast()) == "never" => {
+                config = InlineConfiguration::Never;
             }
             [] => {
                 diagnostics.report(
@@ -326,6 +335,10 @@ impl<'a, 'b> Mapper<'a, 'b> {
                         (concrete_variant.clone(), self.renamed_blocks[block_id])
                     })
                     .collect(),
+            }),
+            Statement::Snapshot(stmt) => Statement::Snapshot(StatementSnapshot {
+                input: self.rename_var(&stmt.input),
+                output: self.rename_var(&stmt.output),
             }),
         }
     }
