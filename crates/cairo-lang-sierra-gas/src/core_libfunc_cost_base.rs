@@ -4,9 +4,10 @@ use cairo_lang_sierra::extensions::boxing::BoxConcreteLibfunc;
 use cairo_lang_sierra::extensions::builtin_cost::{
     BuiltinCostConcreteLibfunc, BuiltinCostGetGasLibfunc, CostTokenType,
 };
+use cairo_lang_sierra::extensions::casts::CastConcreteLibfunc;
 use cairo_lang_sierra::extensions::core::CoreConcreteLibfunc::{
-    self, ApTracking, Array, Bitwise, Bool, Box, BranchAlign, BuiltinCost, DictFeltTo, Drop, Dup,
-    Ec, Enum, Felt, FunctionCall, Gas, Mem, Pedersen, Struct, Uint128, Uint16, Uint32, Uint64,
+    self, ApTracking, Array, Bitwise, Bool, Box, BranchAlign, BuiltinCost, Cast, DictFeltTo, Drop,
+    Dup, Ec, Enum, Felt, FunctionCall, Gas, Mem, Pedersen, Struct, Uint128, Uint16, Uint32, Uint64,
     Uint8, UnconditionalJump, UnwrapNonZero,
 };
 use cairo_lang_sierra::extensions::dict_felt_to::DictFeltToConcreteLibfunc;
@@ -51,7 +52,7 @@ pub const DICT_SQUASH_UNIQUE_KEY_COST: i32 =
 pub const DICT_SQUASH_REPEATED_ACCESS_COST: i32 =
     ConstCost { steps: 12, holes: 0, range_checks: 1 }.cost();
 /// The cost not dependent on the number of keys and access.
-pub const DICT_SQUASH_FIXED_COST: i32 = ConstCost { steps: 89, holes: 0, range_checks: 3 }.cost();
+pub const DICT_SQUASH_FIXED_COST: i32 = ConstCost { steps: 90, holes: 0, range_checks: 3 }.cost();
 /// The cost to charge per each read/write access. `DICT_SQUASH_UNIQUE_KEY_COST` is refunded for
 /// each repeated access in dict_squash.
 pub const DICT_SQUASH_ACCESS_COST: i32 =
@@ -170,6 +171,9 @@ pub fn core_libfunc_postcost<Ops: CostOperations, InfoProvider: InvocationCostIn
         Bool(BoolConcreteLibfunc::Xor(_)) => vec![ops.steps(1)],
         Bool(BoolConcreteLibfunc::Or(_)) => vec![ops.steps(2)],
         Bool(BoolConcreteLibfunc::Equal(_)) => vec![ops.steps(2), ops.steps(3)],
+        Cast(libfunc) => match libfunc {
+            CastConcreteLibfunc::Upcast(_) => vec![ops.steps(0)],
+        },
         Ec(libfunc) => match libfunc {
             EcConcreteLibfunc::IsZero(_) => vec![ops.steps(1), ops.steps(1)],
             EcConcreteLibfunc::Neg(_) => vec![ops.steps(0)],
